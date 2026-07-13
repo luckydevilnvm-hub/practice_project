@@ -1,38 +1,26 @@
 FROM ubuntu:22.04
 
-# Устанавливаем компилятор и зависимости
+# Устанавливаем компилятор, cmake, библиотеки для PostgreSQL и БИБЛИОТЕКУ ASIO
 RUN apt-get update && apt-get install -y \
-    g++ \
+    build-essential \
     cmake \
-    make \
+    pkg-config \
     libpq-dev \
     libasio-dev \
-    git \
-    wget \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Устанавливаем crow (веб-фреймворк)
-WORKDIR /opt
-RUN git clone https://github.com/CrowCpp/Crow.git && \
-    cd Crow && \
-    mkdir build && \
-    cd build && \
-    cmake .. -DCROW_BUILD_EXAMPLES=OFF -DCROW_BUILD_TESTS=OFF && \
-    make install
-
-# Копируем исходники
 WORKDIR /app
-COPY server.cpp .
+
+# Скачиваем фреймворк Crow
+RUN curl -sL https://github.com/CrowCpp/Crow/releases/download/v1.2.0/crow_all.h -o crow_all.h
+
+# Копируем файлы проекта
 COPY CMakeLists.txt .
+COPY main.cpp .
 
-# Компилируем
-RUN mkdir build && \
-    cd build && \
-    cmake .. && \
-    make
+# Собираем проект
+RUN cmake . && make
 
-# Открываем порт
-EXPOSE 8080
-
-# Запускаем
-CMD ["./build/server"]
+# Запускаем скомпилированный сервер
+CMD ["./cpp_server"]
