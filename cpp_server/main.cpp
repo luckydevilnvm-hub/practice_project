@@ -4,7 +4,6 @@
 #include <string>
 #include <libpq-fe.h>
 
-
 PGconn* conn = nullptr;
 
 bool connect_db() {
@@ -21,43 +20,39 @@ bool connect_db() {
 }
 
 int main() {
-    // 1. Подключаемся к БД при запуске сервера
     if (!connect_db()) {
-        return 1; // Завершаем работу, если БД недоступна
+        return 1; 
     }
 
     crow::SimpleApp app;
 
-    // ЭНДПОИНТ: / (проверка работы)
     CROW_ROUTE(app, "/").methods(crow::HTTPMethod::GET)([](){
         crow::json::wvalue response;
         response["message"] = "C++ сервер работает!";
         return crow::response(response);
     });
 
-    // ЭНДПОИНТ: /save (сохранение данных)
     CROW_ROUTE(app, "/save").methods(crow::HTTPMethod::POST)([](const crow::request& req){
         try {
-            // Парсим JSON
             auto body = crow::json::load(req.body);
             if (!body) {
                 return crow::response(400, "{\"error\": \"Некорректный JSON\"}");
             }
             
-            // Берем поле "message" (как в Python версии)
+            // Теперь ищет ключ "message", как и Python версия
             std::string text = body["message"].s();
-
-            // Параметризованный запрос (безопасно и быстро, аналог $1 в Python)
+            
             const char* paramValues[1] = { text.c_str() };
             PGresult* res = PQexecParams(conn, 
                 "INSERT INTO logs (message) VALUES ($1)", 
                 1, nullptr, paramValues, nullptr, nullptr, 0);
-
+                
             if (PQresultStatus(res) == PGRES_COMMAND_OK) {
                 PQclear(res);
                 crow::json::wvalue response;
                 response["status"] = "ok";
-                response["saved_message"] = text;
+                // Унифицировала ответ
+                response["saved_message"] = text; 
                 return crow::response(response);
             } else {
                 std::cerr << "Ошибка БД: " << PQerrorMessage(conn) << std::endl;
@@ -71,8 +66,7 @@ int main() {
 
     std::cout << "C++ сервер запущен на порту 8080" << std::endl;
     app.port(8080).multithreaded().run();
-
-    // Очистка при завершении
+    
     PQfinish(conn);
     return 0;
 }
